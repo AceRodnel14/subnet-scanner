@@ -6,7 +6,7 @@ mirror_to_github:
   stage: mirror
   image: alpine:latest
   rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /^\\[GitHubActions\\]/'
+    - if: '$CI_COMMIT_MESSAGE =~ /^\\[GitHubActionsSync\\]/'
       when: never
     - if: '$CI_COMMIT_BRANCH'
       when: on_success
@@ -19,7 +19,7 @@ mirror_to_github:
     - git remote add github https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/AceRodnel14/subnet-scanner.git
     - git checkout -B "$CI_COMMIT_REF_NAME"
     - ORIGINAL_MSG="$(git log -1 --pretty=%B)"
-    - git commit --amend -m "[GitLabCICD] $ORIGINAL_MSG" --reset-author
+    - git commit --amend -m "[GitLabCICDSync] $ORIGINAL_MSG" --reset-author
     - git push github "$CI_COMMIT_REF_NAME" --force
   tags:
     - docker   # ensure this runs on a runner with git + access to docker (if needed)
@@ -27,7 +27,7 @@ mirror_to_github:
 docker_cleanup:
   stage: cleanup
   rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /^\\[GitHubActions\\]/'
+    - if: '$CI_COMMIT_MESSAGE =~ /^\\[GitHubActionsSync\\]/'
       when: never
     - if: '$CI_COMMIT_BRANCH'
       when: on_success
