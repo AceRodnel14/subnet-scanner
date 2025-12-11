@@ -5,6 +5,10 @@ stages:
 mirror_to_github:
   stage: mirror
   image: alpine:latest
+  rules:
+    - if: '$CI_COMMIT_MESSAGE =~ /^\\[GitHubActions\\]/'
+      when: never
+    - when: on_success
   before_script:
     - apk add --no-cache git
     - git config --global user.email "$GITHUB_EMAIL"
@@ -12,7 +16,8 @@ mirror_to_github:
   script:
     - git remote add github https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/AceRodnel14/subnet-scanner.git
     - git checkout -B "$CI_COMMIT_REF_NAME"
-    - git commit --amend --reset-author --no-edit
+    - ORIGINAL_MSG="$(git log -1 --pretty=%B)"
+    - git commit --amend -m "[GitLabCICD] $ORIGINAL_MSG" --reset-author
     - git push github "$CI_COMMIT_REF_NAME" --force
   only:
     - branches
@@ -21,6 +26,10 @@ mirror_to_github:
 
 docker_cleanup:
   stage: cleanup
+  rules:
+    - if: '$CI_COMMIT_MESSAGE =~ /^\\[GitHubActions\\]/'
+      when: never
+    - when: on_success
   script:
     - echo "Cleaning up Docker unused data..."
     - docker system prune -af --volumes
