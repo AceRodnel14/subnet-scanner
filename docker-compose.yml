@@ -1,0 +1,14 @@
+services:
+  subnet-scanner:
+    build: .
+    container_name: subnet-scanner
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DEFAULT_SUBNET=192.168.1.0/24
+      # - ICON=/app/favicon.ico
+    # volumes:
+    #   - ./favicon.ico:/app/favicon.ico:ro
+    # network_mode: host
+    restart: unless-stopped

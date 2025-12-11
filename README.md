@@ -1,93 +1,233 @@
-# subnet-scanner
+# Subnet Scanner
 
+A lightweight Go web application for scanning and pinging IP addresses within a subnet.
 
+## Features
 
-## Getting started
+- 🌐 Scan entire subnets using CIDR notation
+- 🔄 Ping each IP address 3 times for reliability
+- 📊 Visual grid display (up to 25 columns)
+- ✅ Real-time online/offline status
+- 💾 **Persistent results** - Last scan survives page refreshes and restarts
+- 🎨 Modern, responsive UI
+- 🐳 Docker support
+- ⚙️ Configurable default subnet via environment variable
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Project Structure
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/acerodnel/subnet-scanner.git
-git branch -M main
-git push -uf origin main
+subnet-scanner/
+├── main.go
+├── templates/
+│   └── index.html
+├── Dockerfile
+├── docker-compose.yml
+├── go.mod (optional - auto-generated if not present)
+└── README.md
 ```
 
-## Integrate with your tools
+## Setup & Installation
 
-* [Set up project integrations](https://gitlab.com/acerodnel/subnet-scanner/-/settings/integrations)
+### Option 1: Using Docker Compose (Recommended)
 
-## Collaborate with your team
+1. Create the project directory structure:
+```bash
+mkdir -p subnet-scanner/templates
+cd subnet-scanner
+```
 
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+2. Copy all the files to their respective locations:
+   - `main.go` → root directory
+   - `index.html` → templates/ directory
+   - `Dockerfile` → root directory
+   - `docker-compose.yml` → root directory
 
-## Test and Deploy
+3. Build and run:
+```bash
+docker-compose up -d
+```
 
-Use the built-in continuous integration in GitLab.
+4. Access the application at `http://localhost:8080`
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+### Option 2: Using Docker directly
 
-***
+```bash
+# Build the image
+docker build -t subnet-scanner .
 
-# Editing this README
+# Run the container
+docker run -d -p 8080:8080 \
+  -e DEFAULT_SUBNET=192.168.1.0/24 \
+  --name subnet-scanner \
+  subnet-scanner
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### Option 3: Run locally (without Docker)
 
-## Suggestions for a good README
+```bash
+# Install Go 1.21+ if not installed
+# https://golang.org/dl/
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+# Initialize Go module (if go.mod doesn't exist)
+go mod init subnet-scanner
 
-## Name
-Choose a self-explaining name for your project.
+# Run the application
+go run main.go
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Access at `http://localhost:8080`
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## Configuration
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### Environment Variables
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+- `PORT` - Server port (default: `8080`)
+- `DEFAULT_SUBNET` - Default subnet to pre-fill (default: `192.168.1.0/24`)
+- `ICON` - Path to custom favicon file (optional, e.g., `/app/favicon.ico`)
+
+### Using a Custom Icon
+
+You can set a custom favicon for the web app by providing an icon file:
+
+**Option 1: Using Docker Compose**
+
+1. Place your icon file (e.g., `favicon.ico`, `favicon.png`) in your project directory
+2. Update `docker-compose.yml`:
+
+```yaml
+services:
+  subnet-scanner:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - ICON=/app/favicon.ico
+    volumes:
+      - ./favicon.ico:/app/favicon.ico:ro
+```
+
+**Option 2: Using Docker CLI**
+
+```bash
+docker run -d -p 8080:8080 \
+  -e ICON=/app/favicon.ico \
+  -v $(pwd)/favicon.ico:/app/favicon.ico:ro \
+  subnet-scanner
+```
+
+**Supported Icon Formats:**
+- `.ico` (recommended for best browser support)
+- `.png` (works in modern browsers)
+- `.svg` (works in modern browsers)
+
+If no icon is specified, a default 🌐 emoji icon will be used.
+
+### Example with custom settings:
+
+```bash
+docker run -d -p 3000:3000 \
+  -e PORT=3000 \
+  -e DEFAULT_SUBNET=10.0.0.0/24 \
+  subnet-scanner
+```
+
+Or in `docker-compose.yml`:
+```yaml
+environment:
+  - PORT=3000
+  - DEFAULT_SUBNET=10.0.0.0/24
+```
+
+## Network Modes
+
+### Bridge Mode (Default)
+The default configuration uses bridge networking. This works for scanning IPs within Docker networks or external networks accessible from the container.
+
+### Host Mode (For Local Network Scanning)
+If you need to scan your local network (e.g., your home/office LAN), use host network mode:
+
+In `docker-compose.yml`:
+```yaml
+services:
+  subnet-scanner:
+    build: .
+    network_mode: host
+    environment:
+      - DEFAULT_SUBNET=192.168.1.0/24
+    # Remove the ports section when using host mode
+```
+
+Or with Docker CLI:
+```bash
+docker run -d --network host \
+  -e DEFAULT_SUBNET=192.168.1.0/24 \
+  subnet-scanner
+```
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+1. Open your browser to `http://localhost:8080`
+2. Enter a subnet in CIDR notation (e.g., `192.168.1.0/24`)
+3. Click "Start Scan"
+4. Wait for the scan to complete (each IP is pinged 3 times)
+5. View the results in a visual grid:
+   - ✅ Green = Online/Reachable
+   - ❌ Red = Offline/Unreachable
+6. **Results persist automatically** - refresh the page and your last scan is still there!
+7. Click "Scan Again" to perform a new scan
+8. Click "Clear Results" to remove saved scan data
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Persistent Storage
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+The application automatically saves your last scan result using browser storage. This means:
+- Results survive page refreshes
+- Results persist after Docker container restarts
+- Only the most recent scan is kept
+- Use "Clear Results" button to remove saved data
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## How It Works
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+1. **Input Validation**: Ensures valid CIDR notation
+2. **IP Range Calculation**: Generates list of IPs from subnet (excluding network/broadcast)
+3. **Concurrent Pinging**: Pings up to 50 IPs simultaneously for speed
+4. **3x Ping Verification**: Each IP is pinged 3 times with 1-second timeout
+5. **Results Display**: Shows status in a grid (25 columns max per row)
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Technical Details
+
+- **Backend**: Go 1.21+ (lightweight, ~10MB image)
+- **Frontend**: Vanilla JavaScript + CSS (no frameworks)
+- **Concurrency**: Goroutines with semaphore pattern for controlled concurrency
+- **Ping Command**: Uses OS-native `ping` command (cross-platform)
+
+## Troubleshooting
+
+### Pings not working in Docker?
+- Use `network_mode: host` in docker-compose.yml for local network access
+- Ensure the container has network access to the target subnet
+
+### Permission issues?
+- Docker may need `--cap-add=NET_RAW` for ICMP packets (usually not required with standard ping)
+
+### Large subnets timing out?
+- /16 or larger subnets may take several minutes
+- Consider breaking into smaller /24 subnets
+
+## Performance
+
+- /24 subnet (254 IPs): ~10-30 seconds
+- /16 subnet (65,534 IPs): Several minutes
+- Concurrent ping limit: 50 simultaneous connections
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+MIT License - Feel free to use and modify!
+
+## Contributing
+
+Pull requests welcome! Some ideas for enhancement:
+- Port scanning in addition to ping
+- Save scan history
+- Export results to CSV
+- Custom ping count/timeout
+- Dark/light theme toggle

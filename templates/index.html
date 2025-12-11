@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subnet Scanner</title>
+    {{if eq .HasIcon "true"}}
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    {{else}}
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+    {{end}}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            color: #3b82f6;
+        }
+
+        .input-section {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .input-group {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 2px solid #334155;
+            border-radius: 0.5rem;
+            background: #0f172a;
+            color: #fff;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        button {
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #startBtn {
+            background: #3b82f6;
+            color: white;
+        }
+
+        #startBtn:hover:not(:disabled) {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        #startBtn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 3rem;
+            background: #1e293b;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .spinner {
+            border: 4px solid #334155;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .scan-info {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .legend {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .legend-box.online {
+            background: #10b981;
+        }
+
+        .legend-box.offline {
+            background: #ef4444;
+        }
+
+        .grid {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        td {
+            padding: 0.5rem;
+        }
+
+        .ip-cell {
+            min-width: 60px;
+            height: 60px;
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .ip-cell:hover {
+            transform: scale(1.05);
+        }
+
+        .ip-cell.online {
+            background: #10b981;
+        }
+
+        .ip-cell.offline {
+            background: #ef4444;
+        }
+
+        .ip-number {
+            font-size: 1.1rem;
+            margin-top: 0.25rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        #scanAgainBtn, #clearResultsBtn {
+            background: #64748b;
+            color: white;
+        }
+
+        #scanAgainBtn:hover, #clearResultsBtn:hover {
+            background: #475569;
+        }
+
+        #clearResultsBtn {
+            background: #ef4444;
+        }
+
+        #clearResultsBtn:hover {
+            background: #dc2626;
+        }
+
+        .summary {
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Subnet Scanner</h1>
+
+        <div class="input-section" id="inputSection">
+            <div class="input-group">
+                <label for="subnet">Enter Subnet (CIDR notation)</label>
+                <input type="text" id="subnet" placeholder="192.168.1.0/24" value="{{.DefaultSubnet}}">
+            </div>
+            <button id="startBtn">Start Scan</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">Scanning subnet...</p>
+            <p style="color: #94a3b8;">Pinging each IP address 3 times</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="results-header">
+                <div class="scan-info">
+                    Last scanned: <span id="scanTime"></span>
+                </div>
+                <div class="scan-info">
+                    Subnet: <span id="scannedSubnet"></span>
+                </div>
+            </div>
+            <div class="summary" id="summary"></div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box online"></div>
+                    <span>Online</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box offline"></div>
+                    <span>Offline</span>
+                </div>
+            </div>
+            <div class="grid">
+                <table id="resultsTable">
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="button-group">
+                <button id="scanAgainBtn">Scan Again</button>
+                <button id="clearResultsBtn">Clear Results</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const subnetInput = document.getElementById('subnet');
+        const startBtn = document.getElementById('startBtn');
+        const inputSection = document.getElementById('inputSection');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const resultsTable = document.getElementById('resultsTable');
+        const scanAgainBtn = document.getElementById('scanAgainBtn');
+        const clearResultsBtn = document.getElementById('clearResultsBtn');
+        const summary = document.getElementById('summary');
+        const scanTime = document.getElementById('scanTime');
+        const scannedSubnet = document.getElementById('scannedSubnet');
+
+        const STORAGE_KEY = 'last_scan_result';
+
+        // Load saved results on page load
+        async function loadSavedResults() {
+            try {
+                const result = await window.storage.get(STORAGE_KEY);
+                if (result && result.value) {
+                    const savedData = JSON.parse(result.value);
+                    displayResults(savedData.results, savedData.subnet, savedData.timestamp);
+                    inputSection.style.display = 'none';
+                }
+            } catch (error) {
+                console.log('No saved results found');
+            }
+        }
+
+        function updateButtonState() {
+            startBtn.disabled = subnetInput.value.trim() === '';
+        }
+
+        subnetInput.addEventListener('input', updateButtonState);
+        updateButtonState();
+
+        startBtn.addEventListener('click', async () => {
+            const subnet = subnetInput.value.trim();
+            if (!subnet) return;
+
+            inputSection.style.display = 'none';
+            loading.style.display = 'block';
+            results.style.display = 'none';
+
+            try {
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ subnet }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Scan failed');
+                }
+
+                const data = await response.json();
+                const timestamp = new Date().toISOString();
+                
+                // Save results to storage
+                await saveResults(data, subnet, timestamp);
+                
+                displayResults(data, subnet, timestamp);
+            } catch (error) {
+                alert('Error: ' + error.message);
+                inputSection.style.display = 'flex';
+                loading.style.display = 'none';
+            }
+        });
+
+        scanAgainBtn.addEventListener('click', () => {
+            results.style.display = 'none';
+            inputSection.style.display = 'flex';
+        });
+
+        clearResultsBtn.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to clear the saved results?')) {
+                try {
+                    await window.storage.delete(STORAGE_KEY);
+                    results.style.display = 'none';
+                    inputSection.style.display = 'flex';
+                } catch (error) {
+                    console.error('Error clearing results:', error);
+                }
+            }
+        });
+
+        async function saveResults(data, subnet, timestamp) {
+            try {
+                const saveData = {
+                    results: data,
+                    subnet: subnet,
+                    timestamp: timestamp
+                };
+                await window.storage.set(STORAGE_KEY, JSON.stringify(saveData));
+            } catch (error) {
+                console.error('Error saving results:', error);
+            }
+        }
+
+        function displayResults(data, subnet, timestamp) {
+            const maxCols = 15;
+            const rows = Math.ceil(data.length / maxCols);
+            const tbody = resultsTable.querySelector('tbody');
+            tbody.innerHTML = '';
+
+            let onlineCount = 0;
+            let offlineCount = 0;
+
+            for (let i = 0; i < rows; i++) {
+                const tr = document.createElement('tr');
+                for (let j = 0; j < maxCols; j++) {
+                    const index = i * maxCols + j;
+                    const td = document.createElement('td');
+                    
+                    if (index < data.length) {
+                        const result = data[index];
+                        const lastOctet = result.ip.split('.').pop();
+                        
+                        if (result.alive) onlineCount++;
+                        else offlineCount++;
+
+                        td.innerHTML = `
+                            <div class="ip-cell ${result.alive ? 'online' : 'offline'}" title="${result.ip}">
+                                <span>${result.alive ? '✓' : '✗'}</span>
+                                <span class="ip-number">.${lastOctet}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+
+            summary.innerHTML = `
+                <strong>${onlineCount}</strong> online • 
+                <strong>${offlineCount}</strong> offline • 
+                <strong>${data.length}</strong> total
+            `;
+
+            // Format and display scan time
+            const scanDate = new Date(timestamp);
+            scanTime.textContent = scanDate.toLocaleString();
+            scannedSubnet.textContent = subnet;
+
+            loading.style.display = 'none';
+            results.style.display = 'block';
+        }
+
+        // Load saved results when page loads
+        loadSavedResults();
+    </script>
+</body>
+</html>
