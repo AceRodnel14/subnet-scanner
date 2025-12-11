@@ -19,6 +19,11 @@ mirror_to_github:
     - git remote add github https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/AceRodnel14/subnet-scanner.git
     - git checkout -B "$CI_COMMIT_REF_NAME"
     - ORIGINAL_MSG="$(git log -1 --pretty=%B)"
+    - |
+      if echo "$ORIGINAL_MSG" | grep -q "\[SyncWithGitHub\]"; then
+        echo "Skipping push to GitHub because commit came from GitHub."
+        exit 0
+      fi
     - git commit --amend -m "[SyncWithGitLab] $ORIGINAL_MSG" --reset-author
     - git push github "$CI_COMMIT_REF_NAME" --force
   tags:
