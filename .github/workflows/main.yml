@@ -60,36 +60,43 @@ jobs:
             -t ghcr.io/$ACTOR_LC/subnet-scanner:latest \
             --push .
 
-  # # ---------------------------------------------------------
-  # # 3. BUILD & PUSH TO DOCKER HUB
-  # # ---------------------------------------------------------
-  # build_dockerhub:
-  #   runs-on: [self-hosted, Linux, X64]
-  #   needs:
-  #     - sync_to_gitlab
-  #     - build_ghcr
-  #   if: always()
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
-  #     - name: Login to Docker Hub
-  #       run: |
-  #         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-  #     - name: Build & push Docker Hub image
-  #       run: |
-  #         TAG=$(date +"%y%m%d%H%M%S")
-  #         docker buildx build \
-  #           --platform linux/amd64,linux/arm64 \
-  #           -t eacer/subnet-scanner:$TAG \
-  #           -t eacer/subnet-scanner:latest \
-  #           --push .
+  # ---------------------------------------------------------
+  # 3. BUILD & PUSH TO DOCKER HUB
+  # ---------------------------------------------------------
+  build_dockerhub:
+    runs-on: [self-hosted, Linux, X64]
+    needs:
+      - sync_to_gitlab
+      - build_ghcr
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      - name: Build & push Docker Hub image
+        run: |
+          TAG=$(date +"%y%m%d%H%M%S")
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t eacer/subnet-scanner:$TAG \
+            --push .
+      # - name: Build & push Docker Hub image
+      #   run: |
+      #     TAG=$(date +"%y%m%d%H%M%S")
+      #     docker buildx build \
+      #       --platform linux/amd64,linux/arm64 \
+      #       -t eacer/subnet-scanner:$TAG \
+      #       -t eacer/subnet-scanner:latest \
+      #       --push .
 
   cleanup:
     runs-on: [self-hosted, Linux, X64]
     needs:
       - sync_to_gitlab
       - build_ghcr
-      # - build_dockerhub
+      - build_dockerhub
     if: always()
     steps:
       - name: Cleanup workspace
