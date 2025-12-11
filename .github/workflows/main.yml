@@ -11,7 +11,7 @@ jobs:
   # 1. SYNC JOB — GitHub → GitLab
   # ---------------------------------------------------------
   sync_to_gitlab:
-    runs-on: [self-hosted, docker]
+    runs-on: [self-hosted, Linux, X64]
     if: "! startsWith(github.event.head_commit.message, '[SyncWithGitLab]')"
     steps:
       - name: Checkout
@@ -38,7 +38,7 @@ jobs:
   # # 2. BUILD & PUSH TO GHCR
   # # ---------------------------------------------------------
   # build_ghcr:
-  #   runs-on: [self-hosted, docker]
+  #   runs-on: [self-hosted, Linux, X64]
   #   steps:
   #     - name: Checkout
   #       uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
   # # 3. BUILD & PUSH TO DOCKER HUB
   # # ---------------------------------------------------------
   # build_dockerhub:
-  #   runs-on: [self-hosted, docker]
+  #   runs-on: [self-hosted, Linux, X64]
   #   steps:
   #     - name: Checkout
   #       uses: actions/checkout@v4
