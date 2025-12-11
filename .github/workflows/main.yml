@@ -53,10 +53,11 @@ jobs:
       - name: Build & push GHCR image
         run: |
           TAG=$(date +"%y%m%d%H%M%S")
+          ACTOR_LC=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/${{ toLower(github.actor) }}/subnet-scanner:$TAG \
-            -t ghcr.io/${{ toLower(github.actor) }}/subnet-scanner:latest \
+            -t ghcr.io/$ACTOR_LC/subnet-scanner:$TAG \
+            -t ghcr.io/$ACTOR_LC/subnet-scanner:latest \
             --push .
 
   # # ---------------------------------------------------------
