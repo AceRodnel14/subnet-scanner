@@ -8,7 +8,9 @@ mirror_to_github:
   rules:
     - if: '$CI_COMMIT_MESSAGE =~ /^\\[GitHubActions\\]/'
       when: never
-    - when: on_success
+    - if: '$CI_COMMIT_BRANCH'
+      when: on_success
+    - when: never
   before_script:
     - apk add --no-cache git
     - git config --global user.email "$GITHUB_EMAIL"
@@ -19,8 +21,6 @@ mirror_to_github:
     - ORIGINAL_MSG="$(git log -1 --pretty=%B)"
     - git commit --amend -m "[GitLabCICD] $ORIGINAL_MSG" --reset-author
     - git push github "$CI_COMMIT_REF_NAME" --force
-  only:
-    - branches
   tags:
     - docker   # ensure this runs on a runner with git + access to docker (if needed)
 
@@ -29,7 +29,9 @@ docker_cleanup:
   rules:
     - if: '$CI_COMMIT_MESSAGE =~ /^\\[GitHubActions\\]/'
       when: never
-    - when: on_success
+    - if: '$CI_COMMIT_BRANCH'
+      when: on_success
+    - when: never
   script:
     - echo "Cleaning up Docker unused data..."
     - docker system prune -af --volumes
