@@ -26,10 +26,3 @@ docker_cleanup:
     - docker system prune -af --volumes
   tags:
     - shell
-
-shell_cleanup:
-  stage: cleanup
-  script:
-    - rm -rf ./
-  tags:
-    - shell 
