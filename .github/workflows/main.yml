@@ -59,6 +59,7 @@ jobs:
             -t ghcr.io/$ACTOR_LC/subnet-scanner:$TAG \
             -t ghcr.io/$ACTOR_LC/subnet-scanner:latest \
             --push .
+          docker logout
 
   # ---------------------------------------------------------
   # 3. BUILD & PUSH TO DOCKER HUB
@@ -82,6 +83,7 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             -t eacer/subnet-scanner:$TAG \
             --push .
+          docker logout
       # - name: Build & push Docker Hub image
       #   run: |
       #     TAG=$(date +"%y%m%d%H%M%S")
@@ -104,4 +106,4 @@ jobs:
           echo "Cleaning workspace at $GITHUB_WORKSPACE"
           rm -rf "$GITHUB_WORKSPACE"
           rm -rf "$GITHUB_WORKSPACE"
-          # docker system prune -af --volumes
+          docker system prune -af --volumes
