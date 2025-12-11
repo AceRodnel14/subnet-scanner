@@ -25,6 +25,8 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           echo "${{ secrets.GITLAB_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+          git config --global user.email "$GITLAB_EMAIL"
+          git config --global user.name "$GITLAB_USERNAME"
       - name: Add GitLab remote
         run: git remote add gitlab git@gitlab.com:acerodnel/subnet-scanner.git
       - name: Rewrite commit message
