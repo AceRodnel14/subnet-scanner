@@ -55,8 +55,8 @@ jobs:
           TAG=$(date +"%y%m%d%H%M%S")
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/${{ github.actor }}/subnet-scanner:$TAG \
-            -t ghcr.io/${{ github.actor }}/subnet-scanner:latest \
+            -t ghcr.io/${{ toLower(github.actor) }}/subnet-scanner:$TAG \
+            -t ghcr.io/${{ toLower(github.actor) }}/subnet-scanner:latest \
             --push .
 
   # # ---------------------------------------------------------
