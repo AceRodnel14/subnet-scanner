@@ -11,7 +11,7 @@ mirror_to_github:
     - git config --global user.name "$GITHUB_USERNAME"
   script:
     - git remote add github https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/AceRodnel14/subnet-scanner.git
-    - git checkout -b "$CI_COMMIT_REF_NAME"
+    - git checkout -B "$CI_COMMIT_REF_NAME"
     - git commit --amend --reset-author --no-edit
     - git push github "$CI_COMMIT_REF_NAME" --force
   only:
