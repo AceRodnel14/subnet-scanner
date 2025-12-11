@@ -97,4 +97,4 @@ jobs:
           echo "Cleaning workspace at $GITHUB_WORKSPACE"
           rm -rf "$GITHUB_WORKSPACE"
           rm -rf "$GITHUB_WORKSPACE"
-          docker system prune -af --volumes
+          # docker system prune -af --volumes
