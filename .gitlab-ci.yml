@@ -23,6 +23,13 @@ docker_cleanup:
   stage: cleanup
   script:
     - echo "Cleaning up Docker unused data..."
-    - sudo docker system prune -af --volumes
+    - docker system prune -af --volumes
   tags:
-    - shell        # must run on a host that has Docker and sudo
+    - shell
+
+shell_cleanup:
+  stage: cleanup
+  script:
+    - rm -rf ./
+  tags:
+    - shell 
