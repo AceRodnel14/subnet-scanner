@@ -1,0 +1,75 @@
+name: GitHub Actions
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+
+  # ---------------------------------------------------------
+  # 1. SYNC JOB — GitHub → GitLab
+  # ---------------------------------------------------------
+  sync_to_gitlab:
+    runs-on: [self-hosted, docker]
+    if: "! startsWith(github.event.head_commit.message, '[SyncWithGitLab]')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up SSH for GitLab
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GITLAB_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.GITLAB_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+      - name: Add GitLab remote
+        run: git remote add gitlab git@gitlab.com:acerodnel/subnet-scanner.git
+      - name: Rewrite commit message
+        run: |
+          ORIGINAL_MSG="$(git log -1 --pretty=%B)"
+          git commit --amend -m "[SyncWithGitHub] $ORIGINAL_MSG" --reset-author
+      - name: Push to GitLab
+        run: git push gitlab "${{ github.ref_name }}" --force
+
+  # # ---------------------------------------------------------
+  # # 2. BUILD & PUSH TO GHCR
+  # # ---------------------------------------------------------
+  # build_ghcr:
+  #   runs-on: [self-hosted, docker]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Login to GHCR
+  #       run: |
+  #         echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+  #     - name: Build & push GHCR image
+  #       run: |
+  #         TAG=$(date +"%y%m%d%H%M")
+  #         docker buildx build \
+  #           --platform linux/amd64,linux/arm64 \
+  #           -t ghcr.io/${{ secrets.GHCR_USERNAME }}/subnet-scanner:$TAG \
+  #           -t ghcr.io/${{ secrets.GHCR_USERNAME }}/subnet-scanner:latest \
+  #           --push .
+
+  # # ---------------------------------------------------------
+  # # 3. BUILD & PUSH TO DOCKER HUB
+  # # ---------------------------------------------------------
+  # build_dockerhub:
+  #   runs-on: [self-hosted, docker]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Login to Docker Hub
+  #       run: |
+  #         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+  #     - name: Build & push Docker Hub image
+  #       run: |
+  #         TAG=$(date +"%y%m%d%H%M")
+  #         docker buildx build \
+  #           --platform linux/amd64,linux/arm64 \
+  #           -t eacer/subnet-scanner:$TAG \
+  #           -t eacer/subnet-scanner:latest \
+  #           --push .
