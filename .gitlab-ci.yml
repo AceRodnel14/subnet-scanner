@@ -6,7 +6,7 @@ mirror_to_github:
   stage: mirror
   image: alpine:latest
   rules:
-    # Prevent loop: do not mirror commits that came from GitHub
+    # ===== Prevent GitLab ↔ GitHub loop =====
     - if: '$CI_COMMIT_MESSAGE =~ /^.SyncWithGitHub/'
       when: never
     - if: '$CI_COMMIT_BRANCH'
@@ -17,37 +17,28 @@ mirror_to_github:
     - git config --global user.email "$GITHUB_EMAIL"
     - git config --global user.name "$GITHUB_USERNAME"
   script:
-    # -------------------------
-    # 1. Prepare workspace
-    # -------------------------
+    # ===== Prepare workspace =====
     - mkdir -p work
     - cd work
-    # -------------------------
-    # 2. Clone GitLab repo (lab)
-    # -------------------------
+    # ===== Clone GitLab repo (lab) =====
     - git clone "$CI_REPOSITORY_URL" lab
     - cd lab
     - git checkout "$CI_COMMIT_REF_NAME"
     - cd ..
-    # -------------------------
-    # 3. Clone GitHub repo (hub)
-    # -------------------------
+    # ===== Clone GitHub repo (hub) =====
     - git clone https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY hub
     - cd hub
     - git checkout -B "$CI_COMMIT_REF_NAME" || git checkout -b "$CI_COMMIT_REF_NAME"
     - cd ..
-    # -------------------------
-    # 4. Sync files lab → hub
-    # -------------------------
+    # ===== Sync files lab → hub =====
     - rsync -av --delete --exclude='.git' lab/ hub/
-    # -------------------------
-    # 5. Commit & push to GitHub
-    # -------------------------
+    # ===== Commit & push to GitHub =====
     - cd hub
+    - git status
     - |
       if git status --porcelain | grep .; then
         git add .
-        git commit -m "[SyncWithGitHub] Sync from GitLab commit $CI_COMMIT_SHA"
+        git commit -m "[SyncWithGitLab] Sync from GitLab commit $CI_COMMIT_SHA"
         git push origin "$CI_COMMIT_REF_NAME"
       else
         echo "No changes to sync."

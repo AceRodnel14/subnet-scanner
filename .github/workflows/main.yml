@@ -10,14 +10,17 @@ jobs:
   # ---------------------------------------------------------
   # 1. SYNC JOB — GitHub → GitLab
   # ---------------------------------------------------------
-  sync_to_gitlab:
+  mirror_to_gitlab:
     runs-on: [self-hosted, Linux, X64]
     if: "! startsWith(github.event.head_commit.message, '[SyncWithGitLab]')"
     steps:
-      - name: Checkout
+      # ===== Checkout GitHub repo =====
+      - name: Checkout GitHub (hub)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          path: hub
+      # ===== Setup SSH for GitLab =====
       - name: Set up SSH for GitLab
         run: |
           mkdir -p ~/.ssh
@@ -25,16 +28,34 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           echo "${{ secrets.GITLAB_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
           git config --global user.email "${{ secrets.GITLAB_EMAIL }}"
           git config --global user.name "${{ secrets.GITLAB_USERNAME }}"
-      - name: Add GitLab remote
-        run: git remote add gitlab "git@gitlab.com:${{ secrets.GITLAB_REPOSITORY }}"
-      - name: Rewrite commit message
+      # ===== Clone GitLab repo (lab) =====
+      - name: Clone GitLab repository
         run: |
-          ORIGINAL_MSG="$(git log -1 --pretty=%B)"
-          git commit --amend -m "[SyncWithGitHub] $ORIGINAL_MSG" --reset-author
-      - name: Push to GitLab
-        run: git push gitlab "${{ github.ref_name }}" --force
+          git clone git@gitlab.com:${{ secrets.GITLAB_REPOSITORY }} lab
+          cd lab
+          git checkout -B "${{ github.ref_name }}" || git checkout -b "${{ github.ref_name }}"
+      # ===== Sync files hub → lab =====
+      - name: Sync files from GitHub to GitLab
+        run: |
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='.gitignore' \
+            hub/ lab/
+      # ===== Commit & push to GitLab =====
+      - name: Commit and push to GitLab
+        run: |
+          cd lab
+          git status
+          if git status --porcelain | grep .; then
+            git add .
+            git commit -m "[SyncWithGitHub] Sync from GitHub commit ${{ github.sha }}"
+            git push origin "${{ github.ref_name }}"
+          else
+            echo "No changes to sync."
+          fi
 
   # # ---------------------------------------------------------
   # # 2. BUILD & PUSH TO GHCR
@@ -42,7 +63,7 @@ jobs:
   # build_ghcr:
   #   runs-on: [self-hosted, Linux, X64]
   #   needs:
-  #     - sync_to_gitlab
+  #     - mirror_to_gitlab
   #   if: always()
   #   steps:
   #     - name: Checkout
@@ -67,7 +88,7 @@ jobs:
   # build_dockerhub:
   #   runs-on: [self-hosted, Linux, X64]
   #   needs:
-  #     - sync_to_gitlab
+  #     - mirror_to_gitlab
   #     - build_ghcr
   #   if: always()
   #   steps:
@@ -96,7 +117,7 @@ jobs:
   cleanup:
     runs-on: [self-hosted, Linux, X64]
     needs:
-      - sync_to_gitlab
+      - mirror_to_gitlab
       # - build_ghcr
       # - build_dockerhub
     if: always()
