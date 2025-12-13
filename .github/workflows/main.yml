@@ -28,7 +28,7 @@ jobs:
           git config --global user.email "${{ secrets.GITLAB_EMAIL }}"
           git config --global user.name "${{ secrets.GITLAB_USERNAME }}"
       - name: Add GitLab remote
-        run: git remote add gitlab git@gitlab.com:acerodnel/subnet-scanner.git
+        run: git remote add gitlab "git@gitlab.com:${{ secrets.GITLAB_REPOSITORY }}"
       - name: Rewrite commit message
         run: |
           ORIGINAL_MSG="$(git log -1 --pretty=%B)"
@@ -36,69 +36,69 @@ jobs:
       - name: Push to GitLab
         run: git push gitlab "${{ github.ref_name }}" --force
 
-  # ---------------------------------------------------------
-  # 2. BUILD & PUSH TO GHCR
-  # ---------------------------------------------------------
-  build_ghcr:
-    runs-on: [self-hosted, Linux, X64]
-    needs:
-      - sync_to_gitlab
-    if: always()
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Login to GHCR
-        run: |
-          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-      - name: Build & push GHCR image
-        run: |
-          TAG=$(date +"%y%m%d%H%M%S")
-          ACTOR_LC=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/$ACTOR_LC/subnet-scanner:$TAG \
-            -t ghcr.io/$ACTOR_LC/subnet-scanner:latest \
-            --push .
-          docker logout
+  # # ---------------------------------------------------------
+  # # 2. BUILD & PUSH TO GHCR
+  # # ---------------------------------------------------------
+  # build_ghcr:
+  #   runs-on: [self-hosted, Linux, X64]
+  #   needs:
+  #     - sync_to_gitlab
+  #   if: always()
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Login to GHCR
+  #       run: |
+  #         echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+  #     - name: Build & push GHCR image
+  #       run: |
+  #         TAG=$(date +"%y%m%d%H%M%S")
+  #         ACTOR_LC=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
+  #         docker buildx build \
+  #           --platform linux/amd64,linux/arm64 \
+  #           -t ghcr.io/$ACTOR_LC/subnet-scanner:$TAG \
+  #           -t ghcr.io/$ACTOR_LC/subnet-scanner:latest \
+  #           --push .
+  #         docker logout
 
-  # ---------------------------------------------------------
-  # 3. BUILD & PUSH TO DOCKER HUB
-  # ---------------------------------------------------------
-  build_dockerhub:
-    runs-on: [self-hosted, Linux, X64]
-    needs:
-      - sync_to_gitlab
-      - build_ghcr
-    if: always()
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Login to Docker Hub
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-      - name: Build & push Docker Hub image
-        run: |
-          TAG=$(date +"%y%m%d%H%M%S")
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            -t eacer/subnet-scanner:$TAG \
-            --push .
-          docker logout
-      # - name: Build & push Docker Hub image
-      #   run: |
-      #     TAG=$(date +"%y%m%d%H%M%S")
-      #     docker buildx build \
-      #       --platform linux/amd64,linux/arm64 \
-      #       -t eacer/subnet-scanner:$TAG \
-      #       -t eacer/subnet-scanner:latest \
-      #       --push .
+  # # ---------------------------------------------------------
+  # # 3. BUILD & PUSH TO DOCKER HUB
+  # # ---------------------------------------------------------
+  # build_dockerhub:
+  #   runs-on: [self-hosted, Linux, X64]
+  #   needs:
+  #     - sync_to_gitlab
+  #     - build_ghcr
+  #   if: always()
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Login to Docker Hub
+  #       run: |
+  #         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+  #     - name: Build & push Docker Hub image
+  #       run: |
+  #         TAG=$(date +"%y%m%d%H%M%S")
+  #         docker buildx build \
+  #           --platform linux/amd64,linux/arm64 \
+  #           -t eacer/subnet-scanner:$TAG \
+  #           --push .
+  #         docker logout
+  #     # - name: Build & push Docker Hub image
+  #     #   run: |
+  #     #     TAG=$(date +"%y%m%d%H%M%S")
+  #     #     docker buildx build \
+  #     #       --platform linux/amd64,linux/arm64 \
+  #     #       -t eacer/subnet-scanner:$TAG \
+  #     #       -t eacer/subnet-scanner:latest \
+  #     #       --push .
 
   cleanup:
     runs-on: [self-hosted, Linux, X64]
     needs:
       - sync_to_gitlab
-      - build_ghcr
-      - build_dockerhub
+      # - build_ghcr
+      # - build_dockerhub
     if: always()
     steps:
       - name: Cleanup workspace
