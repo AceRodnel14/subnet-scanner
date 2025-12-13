@@ -50,6 +50,7 @@ jobs:
           cd lab
           git status
           git_short_sha="${{ github.sha }}"
+          git_short_sha="${git_short_sha:0:8}"
           if git status --porcelain | grep .; then
             git add .
             git commit -m "[SyncWithGitHub] Sync from GitHub commit $git_short_sha"
