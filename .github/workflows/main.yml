@@ -51,7 +51,7 @@ jobs:
           git status
           if git status --porcelain | grep .; then
             git add .
-            git commit -m "[SyncWithGitHub] Sync from GitHub commit ${{ github.sha }}"
+            git commit -m "[SyncWithGitHub] Sync from GitHub commit ${{ github.sha::0:7 }}"
             git push origin "${{ github.ref_name }}"
           else
             echo "No changes to sync."
