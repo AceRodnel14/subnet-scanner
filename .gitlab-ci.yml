@@ -6,26 +6,52 @@ mirror_to_github:
   stage: mirror
   image: alpine:latest
   rules:
+    # Prevent loop: do not mirror commits that came from GitHub
     - if: '$CI_COMMIT_MESSAGE =~ /^.SyncWithGitHub/'
       when: never
     - if: '$CI_COMMIT_BRANCH'
       when: on_success
     - when: never
   before_script:
-    - apk add --no-cache git
+    - apk add --no-cache git rsync
     - git config --global user.email "$GITHUB_EMAIL"
     - git config --global user.name "$GITHUB_USERNAME"
   script:
-    - git remote add github https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/AceRodnel14/subnet-scanner.git
-    - git checkout -B "$CI_COMMIT_REF_NAME"
-    - ORIGINAL_MSG="$(git log -1 --pretty=%B)"
+    # -------------------------
+    # 1. Prepare workspace
+    # -------------------------
+    - mkdir -p work
+    - cd work
+    # -------------------------
+    # 2. Clone GitLab repo (lab)
+    # -------------------------
+    - git clone "$CI_REPOSITORY_URL" lab
+    - cd lab
+    - git checkout "$CI_COMMIT_REF_NAME"
+    - cd ..
+    # -------------------------
+    # 3. Clone GitHub repo (hub)
+    # -------------------------
+    - git clone https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY hub
+    - cd hub
+    - git checkout -B "$CI_COMMIT_REF_NAME" || git checkout -b "$CI_COMMIT_REF_NAME"
+    - cd ..
+    # -------------------------
+    # 4. Sync files lab → hub
+    # -------------------------
+    - rsync -av --delete --exclude='.git' lab/ hub/
+    # -------------------------
+    # 5. Commit & push to GitHub
+    # -------------------------
+    - cd hub
     - |
-      if echo "$ORIGINAL_MSG" | grep -q "\[SyncWithGitHub\]"; then
-        echo "Skipping push to GitHub because commit came from GitHub."
-        exit 0
+      if git status --porcelain | grep .; then
+        git add .
+        git commit -m "[SyncWithGitHub] Sync from GitLab commit $CI_COMMIT_SHA"
+        git push origin "$CI_COMMIT_REF_NAME"
+      else
+        echo "No changes to sync."
       fi
-    - git commit --amend -m "[SyncWithGitLab] $ORIGINAL_MSG" --reset-author
-    - git push github "$CI_COMMIT_REF_NAME" --force
   tags:
     - docker
 
