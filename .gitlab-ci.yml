@@ -1,61 +1,7 @@
+include:
+  project: 'acerodnel/gitlab-actions'
+  file: 'templates/sync_to_github.yml'
+
 stages:
-  - mirror
+  - sync
   - cleanup
-
-mirror_to_github:
-  stage: mirror
-  image: alpine:latest
-  rules:
-    # ===== Prevent GitLab ↔ GitHub loop =====
-    - if: '$CI_COMMIT_MESSAGE =~ /^.SyncWithGitHub/'
-      when: never
-    - if: '$CI_COMMIT_BRANCH'
-      when: on_success
-    - when: never
-  before_script:
-    - apk add --no-cache git rsync
-    - git config --global user.email "$GITHUB_EMAIL"
-    - git config --global user.name "$GITHUB_USERNAME"
-  script:
-    # ===== Prepare workspace =====
-    - mkdir -p work
-    - cd work
-    # ===== Clone GitLab repo (lab) =====
-    - git clone "$CI_REPOSITORY_URL" lab
-    - cd lab
-    - git checkout "$CI_COMMIT_REF_NAME"
-    - cd ..
-    # ===== Clone GitHub repo (hub) =====
-    - git clone https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY hub
-    - cd hub
-    - git checkout -B "$CI_COMMIT_REF_NAME" || git checkout -b "$CI_COMMIT_REF_NAME"
-    - cd ..
-    # ===== Sync files lab → hub =====
-    - rsync -av --delete --exclude='.git' lab/ hub/
-    # ===== Commit & push to GitHub =====
-    - cd hub
-    - git status
-    - |
-      if git status --porcelain | grep .; then
-        git add .
-        git commit -m "[SyncWithGitLab] Sync from GitLab commit $CI_COMMIT_SHORT_SHA"
-        git push origin "$CI_COMMIT_REF_NAME"
-      else
-        echo "No changes to sync."
-      fi
-  tags:
-    - docker
-
-docker_cleanup:
-  stage: cleanup
-  rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /^.SyncWithGitHub/'
-      when: never
-    - if: '$CI_COMMIT_BRANCH'
-      when: on_success
-    - when: never
-  script:
-    - echo "Cleaning up Docker unused data..."
-    - docker system prune -af --volumes
-  tags:
-    - shell
