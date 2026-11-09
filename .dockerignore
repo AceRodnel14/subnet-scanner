@@ -1,0 +1,15 @@
+.git
+.gitlab-ci.yml
+manual_cicd_lint.sh
+.env
+.env.*
+docker-compose*.yml
+README.md
+dockerdesc.md
+docs/
+**/*_test.go
+tests/
+**/node_modules/
+**/dist/
+.cache/
+.github/

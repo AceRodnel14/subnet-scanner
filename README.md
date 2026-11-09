@@ -1,233 +1,111 @@
-# Subnet Scanner
+# subnet-scanner
 
-A lightweight Go web application for scanning and pinging IP addresses within a subnet.
+A small self-hosted web app that pings every host in an IPv4 subnet and shows which
+addresses are online. Enter a subnet in CIDR notation (`/24` or narrower); the app
+pings each host up to 3 times, 50 at a time, and shows the results as a grid of up to
+25 columns with an online/offline count. The last scan is kept in your browser, so it
+survives a page reload.
 
-## Features
+## Self-hosting
 
-- 🌐 Scan entire subnets using CIDR notation
-- 🔄 Ping each IP address 3 times for reliability
-- 📊 Visual grid display (up to 25 columns)
-- ✅ Real-time online/offline status
-- 💾 **Persistent results** - Last scan survives page refreshes and restarts
-- 🎨 Modern, responsive UI
-- 🐳 Docker support
-- ⚙️ Configurable default subnet via environment variable
+### Requirements
+- Docker with the Compose plugin, on `linux/amd64` or `linux/arm64`, on a **Linux host**.
+  Docker Desktop (Windows/macOS) puts containers behind a VM NAT, so scans of your LAN
+  are inaccurate there.
+- The app pings with unprivileged ICMP sockets as the non-root user (GID 65532). The
+  `net.ipv4.ping_group_range` sysctl must include that GID. The Compose file sets it; with
+  `docker run` pass `--sysctl net.ipv4.ping_group_range="0 2147483647"`. No extra
+  capabilities or root are needed.
+- With host networking (`network_mode: host`), Docker rejects `net.*` sysctls: set
+  `net.ipv4.ping_group_range` on the host instead.
+- Optional: a reverse proxy in front for HTTPS. The app itself only serves plain HTTP
+  on port `8080`; set `BASE_URL` to the public URL.
 
-## Project Structure
-
-```
-subnet-scanner/
-├── main.go
-├── templates/
-│   └── index.html
-├── Dockerfile
-├── docker-compose.yml
-├── go.mod (optional - auto-generated if not present)
-└── README.md
-```
-
-## Setup & Installation
-
-### Option 1: Using Docker Compose (Recommended)
-
-1. Create the project directory structure:
-```bash
-mkdir -p subnet-scanner/templates
-cd subnet-scanner
-```
-
-2. Copy all the files to their respective locations:
-   - `main.go` → root directory
-   - `index.html` → templates/ directory
-   - `Dockerfile` → root directory
-   - `docker-compose.yml` → root directory
-
-3. Build and run:
-```bash
-docker-compose up -d
-```
-
-4. Access the application at `http://localhost:8080`
-
-### Option 2: Using Docker directly
+### Quick start
+> **Create `.env` from `.env.example` and fill it in before the first start** (at least
+> `BASE_URL` and `DEFAULT_SUBNET`; there are no secrets).
 
 ```bash
-# Build the image
-docker build -t subnet-scanner .
-
-# Run the container
-docker run -d -p 8080:8080 \
-  -e DEFAULT_SUBNET=192.168.1.0/24 \
-  --name subnet-scanner \
-  subnet-scanner
+mkdir subnet-scanner && cd subnet-scanner
+curl -fsSLO https://raw.githubusercontent.com/AceRodnel14/subnet-scanner/main/docker-compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/AceRodnel14/subnet-scanner/main/.env.example
+# edit .env now: at least BASE_URL and DEFAULT_SUBNET
+docker compose pull
+docker compose up -d
 ```
+Open `http://<host>:8080`. Check health with `curl -f http://<host>:8080/healthz`.
 
-### Option 3: Run locally (without Docker)
+### Configuration
+| Variable | Default | Description |
+| :- | :- | :- |
+| `PORT` | `8080` | HTTP listen port inside the container |
+| `BASE_URL` | `http://localhost:8080` | Public URL users see (through the proxy) |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `DEFAULT_SUBNET` | `192.168.1.0/24` | Subnet pre-filled in the UI; IPv4, `/24` or narrower (checked at startup) |
+| `ICON` | _(empty)_ | Path inside the container to a custom `favicon.ico`; empty uses the built-in icon |
+| `IMAGE` | `eacer/subnet-scanner:latest` | Image (and tag) Compose runs or builds |
+| `APP_BIND` / `APP_PORT` | `0.0.0.0` / `8080` | Host address and port to publish on |
 
-```bash
-# Install Go 1.21+ if not installed
-# https://golang.org/dl/
+Custom icon: uncomment the volume in `docker-compose.yml`
+(`./favicon.ico:/icon/favicon.ico:ro`) and set `ICON=/icon/favicon.ico`. The file must be
+readable by UID 65532.
 
-# Initialize Go module (if go.mod doesn't exist)
-go mod init subnet-scanner
+### Scanning
+- IPv4 only, `/24` or narrower (at most 254 hosts). Wider subnets and IPv6 are rejected.
+- A host that doesn't answer takes about 3 s (3 probes, 1 s each), so a mostly empty
+  `/24` can take 15-20 s.
+- If the ping sysctl isn't set, a scan fails with a message naming
+  `net.ipv4.ping_group_range` instead of showing every host offline.
 
-# Run the application
-go run main.go
-```
+### Kubernetes
+> **Required when deployed in Kubernetes:** set `net.ipv4.ping_group_range` in the pod
+> spec. Without it every scan fails with `503` (ICMP ping sockets not permitted).
 
-Access at `http://localhost:8080`
-
-## Configuration
-
-### Environment Variables
-
-- `PORT` - Server port (default: `8080`)
-- `DEFAULT_SUBNET` - Default subnet to pre-fill (default: `192.168.1.0/24`)
-- `ICON` - Path to custom favicon file (optional, e.g., `/app/favicon.ico`)
-
-### Using a Custom Icon
-
-You can set a custom favicon for the web app by providing an icon file:
-
-**Option 1: Using Docker Compose**
-
-1. Place your icon file (e.g., `favicon.ico`, `favicon.png`) in your project directory
-2. Update `docker-compose.yml`:
-
+It is a "safe" sysctl since Kubernetes 1.18, so no kubelet flag is needed; containerd and
+CRI-O often default it to disabled, so set it explicitly:
 ```yaml
-services:
-  subnet-scanner:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      - ICON=/app/favicon.ico
-    volumes:
-      - ./favicon.ico:/app/favicon.ico:ro
+spec:
+  securityContext:
+    sysctls:
+      - name: net.ipv4.ping_group_range
+        value: "0 2147483647"
 ```
+It can't be combined with `hostNetwork`. A NetworkPolicy must allow ICMP egress, and a
+pod only reaches the subnets its network can route to.
 
-**Option 2: Using Docker CLI**
+### Data and backups
+There is no server-side data: the last scan lives in the browser's `localStorage`.
+Nothing to back up.
 
+### Upgrading
+`latest` is the latest stable image and what Compose uses by default. Release tags
+`vX.Y` and `vX.Y.Z` are pushed when a release is tagged: pin `IMAGE` to `vX.Y` for patch
+updates only, then `docker compose pull && docker compose up -d`.
+
+### Health endpoints
+- `/healthz`: the process is up (liveness).
+- `/readyz`: the app is ready (readiness).
+
+### API
+- `GET /api/info`: app info, including `default_subnet` and `has_icon`.
+- `POST /api/scan` with `{"subnet":"192.0.2.0/28"}`: returns `[{"ip":"…","alive":true}]`,
+  sorted by IP. `400` for an invalid or too-wide subnet, `503` when ICMP isn't permitted.
+
+## Development
 ```bash
-docker run -d -p 8080:8080 \
-  -e ICON=/app/favicon.ico \
-  -v $(pwd)/favicon.ico:/app/favicon.ico:ro \
-  subnet-scanner
+cp .env.example .env
+docker compose up --build   # the whole app, as self-hosters run it
+go test ./...
+go run ./cmd/app            # backend on :8080
+./manual_cicd_lint.sh       # the CI lint/test jobs, locally in throwaway containers
 ```
+With the web UI (`web/`): `npm --prefix web install`, then `npm --prefix web run dev`
+(UI on :5173, API proxied to :8080) next to `go run ./cmd/app`; `npm --prefix web test`.
+`go run`/`go test` need `web/dist`: run `npm --prefix web run build` once, or create
+an empty `web/dist/.keep`.
+CI (gitlab-actions `templates/app.yml`): lint and tests on branches and merge requests;
+on the default branch and release tags a test build with a smoke run, the multi-arch
+image push to Docker Hub and the GitHub sync.
 
-**Supported Icon Formats:**
-- `.ico` (recommended for best browser support)
-- `.png` (works in modern browsers)
-- `.svg` (works in modern browsers)
-
-If no icon is specified, a default 🌐 emoji icon will be used.
-
-### Example with custom settings:
-
-```bash
-docker run -d -p 3000:3000 \
-  -e PORT=3000 \
-  -e DEFAULT_SUBNET=10.0.0.0/24 \
-  subnet-scanner
-```
-
-Or in `docker-compose.yml`:
-```yaml
-environment:
-  - PORT=3000
-  - DEFAULT_SUBNET=10.0.0.0/24
-```
-
-## Network Modes
-
-### Bridge Mode (Default)
-The default configuration uses bridge networking. This works for scanning IPs within Docker networks or external networks accessible from the container.
-
-### Host Mode (For Local Network Scanning)
-If you need to scan your local network (e.g., your home/office LAN), use host network mode:
-
-In `docker-compose.yml`:
-```yaml
-services:
-  subnet-scanner:
-    build: .
-    network_mode: host
-    environment:
-      - DEFAULT_SUBNET=192.168.1.0/24
-    # Remove the ports section when using host mode
-```
-
-Or with Docker CLI:
-```bash
-docker run -d --network host \
-  -e DEFAULT_SUBNET=192.168.1.0/24 \
-  subnet-scanner
-```
-
-## Usage
-
-1. Open your browser to `http://localhost:8080`
-2. Enter a subnet in CIDR notation (e.g., `192.168.1.0/24`)
-3. Click "Start Scan"
-4. Wait for the scan to complete (each IP is pinged 3 times)
-5. View the results in a visual grid:
-   - ✅ Green = Online/Reachable
-   - ❌ Red = Offline/Unreachable
-6. **Results persist automatically** - refresh the page and your last scan is still there!
-7. Click "Scan Again" to perform a new scan
-8. Click "Clear Results" to remove saved scan data
-
-### Persistent Storage
-
-The application automatically saves your last scan result using browser storage. This means:
-- Results survive page refreshes
-- Results persist after Docker container restarts
-- Only the most recent scan is kept
-- Use "Clear Results" button to remove saved data
-
-## How It Works
-
-1. **Input Validation**: Ensures valid CIDR notation
-2. **IP Range Calculation**: Generates list of IPs from subnet (excluding network/broadcast)
-3. **Concurrent Pinging**: Pings up to 50 IPs simultaneously for speed
-4. **3x Ping Verification**: Each IP is pinged 3 times with 1-second timeout
-5. **Results Display**: Shows status in a grid (25 columns max per row)
-
-## Technical Details
-
-- **Backend**: Go 1.21+ (lightweight, ~10MB image)
-- **Frontend**: Vanilla JavaScript + CSS (no frameworks)
-- **Concurrency**: Goroutines with semaphore pattern for controlled concurrency
-- **Ping Command**: Uses OS-native `ping` command (cross-platform)
-
-## Troubleshooting
-
-### Pings not working in Docker?
-- Use `network_mode: host` in docker-compose.yml for local network access
-- Ensure the container has network access to the target subnet
-
-### Permission issues?
-- Docker may need `--cap-add=NET_RAW` for ICMP packets (usually not required with standard ping)
-
-### Large subnets timing out?
-- /16 or larger subnets may take several minutes
-- Consider breaking into smaller /24 subnets
-
-## Performance
-
-- /24 subnet (254 IPs): ~10-30 seconds
-- /16 subnet (65,534 IPs): Several minutes
-- Concurrent ping limit: 50 simultaneous connections
-
-## License
-
-MIT License - Feel free to use and modify!
-
-## Contributing
-
-Pull requests welcome! Some ideas for enhancement:
-- Port scanning in addition to ping
-- Save scan history
-- Export results to CSV
-- Custom ping count/timeout
-- Dark/light theme toggle
+---
+_Developed with assistance from Claude (Claude Opus 5.5)._

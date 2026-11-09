@@ -1,14 +1,27 @@
+# Self-hosting: docker compose pull && docker compose up -d
+# Development:  docker compose up --build
 services:
-  subnet-scanner:
+  app:
+    image: ${IMAGE:-eacer/subnet-scanner:latest}
     build: .
-    container_name: subnet-scanner
-    ports:
-      - "8080:8080"
-    environment:
-      - PORT=8080
-      - DEFAULT_SUBNET=192.168.1.0/24
-      # - ICON=/app/favicon.ico
-    # volumes:
-    #   - ./favicon.ico:/app/favicon.ico:ro
-    # network_mode: host
     restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-8080}:8080"
+    # ICMP ping sockets for the nonroot user (GID 65532); Docker's usual default, set explicitly
+    sysctls:
+      net.ipv4.ping_group_range: "0 2147483647"
+    # Optional custom icon; the file must be readable by UID 65532
+    # volumes:
+    #   - ./favicon.ico:/icon/favicon.ico:ro
+    # (and set ICON=/icon/favicon.ico in .env)
+    # The image's HEALTHCHECK already runs (`/app healthcheck` -> /healthz).
+    # Uncomment to change its timings, or use `disable: true` to turn it off.
+    # healthcheck:
+    #   test: ["CMD", "/app", "healthcheck"]
+    #   interval: 30s
+    #   timeout: 3s
+    #   start_period: 5s
+    #   retries: 3
